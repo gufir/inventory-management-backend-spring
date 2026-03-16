@@ -1,0 +1,2 @@
+ALTER TABLE stock_movement
+ALTER COLUMN type TYPE VARCHAR(10);
