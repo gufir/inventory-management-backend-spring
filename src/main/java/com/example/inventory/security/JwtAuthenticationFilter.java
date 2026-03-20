@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -40,8 +41,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             var claims = jwtService.extractClaims(token);
 
+            // Optional : validasi token tipe access
+            String tokenType = claims.get("type", String.class);
+            if (tokenType != null && !"access".equals(tokenType)) {
+                throw new IllegalArgumentException("Invalid token type");
+            }
+
             String username = claims.getSubject();
             String userId = claims.get("userId", String.class);
+            String role = claims.get("role", String.class);
 
             Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -51,7 +59,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(
                                 userId,
                                 null,
-                                Collections.emptyList()
+                                role != null
+                                    ? Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                                    : Collections.emptyList()
                         );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);

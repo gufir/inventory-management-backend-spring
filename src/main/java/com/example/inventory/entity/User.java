@@ -3,10 +3,14 @@ package com.example.inventory.entity;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Where;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
@@ -34,8 +38,10 @@ public class User {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
-    private String role;
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    private RoleType role;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -53,5 +59,8 @@ public class User {
     private Instant deletedAt;
 
     @Column(name = "deleted_by")
-    private UUID deletedBy;    
+    private UUID deletedBy;
+    
+    @Column(name = "is_verified", nullable = false)
+    private boolean isVerified = false;
 }
