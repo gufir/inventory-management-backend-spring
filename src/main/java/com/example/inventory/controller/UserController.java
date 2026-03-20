@@ -41,7 +41,7 @@ public class UserController {
     // Get user by ID
     @GetMapping("/{userId}")
     public UserResponse findById(@PathVariable UUID userId) {
-        return userService.findbyId(userId);
+        return userService.findById(userId);
     }
     
     // Update

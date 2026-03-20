@@ -11,8 +11,10 @@ import com.example.inventory.dto.LoginRequest;
 import com.example.inventory.dto.LoginResponse;
 import com.example.inventory.dto.UpdateUserRequest;
 import com.example.inventory.dto.UserResponse;
+import com.example.inventory.entity.RoleType;
 import com.example.inventory.entity.User;
 import com.example.inventory.repository.UserRepository;
+import com.example.inventory.security.CurrentUser;
 import com.example.inventory.security.JwtService;
 import com.example.inventory.service.UserService;
 
@@ -26,6 +28,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailVerificationServiceImpl emailVerificationService;
+    private final CurrentUser currentUser;
 
     @Override
     public UserResponse create(CreateUserRequest request) {
@@ -37,21 +41,25 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Email already exists");
         }
 
-        UUID currentUserId = getCurrentUserId();
+        // UUID currentUserId = getCurrentUserId();
+
+        UUID userId = UUID.randomUUID();
 
         User user = new User();
-        user.setUserId(UUID.randomUUID());
+        user.setUserId(userId);
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setHashedPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
         
         user.setCreatedAt(Instant.now());
-        user.setCreatedBy(currentUserId);
+        user.setCreatedBy(userId);
         user.setUpdatedAt(Instant.now());
-        user.setUpdatedBy(currentUserId);
+        user.setUpdatedBy(userId);
 
         userRepository.save(user);
+
+        emailVerificationService.sendVerificationEmail(user);
 
         return mapToUserResponse(user);
 
@@ -59,6 +67,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse update(UUID userId, UpdateUserRequest request) {
+        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         
@@ -84,7 +94,7 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getRole() != null) {
-            user.setRole(request.getRole());
+            user.setRole(RoleType.valueOf(request.getRole()));
         }
 
         user.setUpdatedAt(Instant.now());
@@ -101,13 +111,19 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Invalid username or password");
         }
 
-        String token = jwtService.generateToken(user.getUserId(), user.getUsername(), user.getRole());
+        if (!user.isVerified()) {
+            throw new IllegalArgumentException("Email not verified");
+        }
+
+        String accessToken = jwtService.generateAccessToken(user.getUserId(), user.getUsername(), user.getRole());
+        String refreshToken = jwtService.generateRefreshToken(user.getUserId(), user.getUsername());
 
         return LoginResponse.builder()
-        .token(token)
+        .accessToken(accessToken)
+        .refreshToken(refreshToken)
         .userId(user.getUserId())
         .username(user.getUsername())
-        .role(user.getRole())
+        .role(user.getRole().name())
         .createdAt(user.getCreatedAt())
         .updatedAt(user.getUpdatedAt()).build();
     }
@@ -122,15 +138,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse findbyId(UUID userId) {
+    public UserResponse findById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         return mapToUserResponse(user);
     }
 
+    @Override
+    public User findEntityByEmail(String email) {
+        return userRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
     private UUID getCurrentUserId() {
-        return UUID.randomUUID();
+        return currentUser.getUserId();
     }
 
     private UserResponse mapToUserResponse(User user) {
@@ -141,6 +163,7 @@ public class UserServiceImpl implements UserService {
                 .role(user.getRole())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
+                .isVerified(user.isVerified())
                 .build();
     }
 }

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.example.inventory.dto.CategoryResponse;
@@ -27,6 +28,7 @@ public class CategoryServiceImpl implements CategoryService{
 
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public CategoryResponse createCategory(CreateCategoryRequest request) {
         UUID userId = currentUser.getUserId();
 
@@ -50,12 +52,13 @@ public class CategoryServiceImpl implements CategoryService{
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public CategoryResponse updateCategory(UUID categoryId, UpdateCategoryRequest request) {
         UUID userId = currentUser.getUserId();
 
         Category category = categoryRepository.findById(categoryId)
             .filter(c -> c.getDeletedAt() == null)
-            .orElseThrow(() -> new RuntimeException("Item not found"));
+            .orElseThrow(() -> new RuntimeException("Category not found"));
 
         category.setCategoryName(request.getName());
         category.setUpdatedAt(Instant.now());
@@ -67,6 +70,7 @@ public class CategoryServiceImpl implements CategoryService{
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteCategory(UUID categoryId) {
         UUID userId = currentUser.getUserId();
         Category category = categoryRepository.findById(categoryId)

@@ -7,6 +7,7 @@ import com.example.inventory.dto.LoginRequest;
 import com.example.inventory.dto.LoginResponse;
 import com.example.inventory.dto.UpdateUserRequest;
 import com.example.inventory.dto.UserResponse;
+import com.example.inventory.entity.User;
 
 public interface UserService {
     UserResponse create(CreateUserRequest request);
@@ -17,5 +18,7 @@ public interface UserService {
 
     void delete(UUID userId);
 
-    UserResponse findbyId(UUID userId);
+    UserResponse findById(UUID userId);
+
+    User findEntityByEmail(String email);
 }
